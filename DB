@@ -1,0 +1,27 @@
+-- ============================================================
+-- 샘플 데이터 (개발/테스트용)
+-- ============================================================
+ 
+-- 사용자
+INSERT INTO users (email, password_hash, nickname) VALUES
+('test@example.com', '$2b$12$placeholder_hash_here', '테스트맘');
+ 
+-- 아이
+INSERT INTO babies (user_id, name, birth_date, gender) VALUES
+(1, '민준', '2024-03-15', 'male');
+ 
+-- 기록
+INSERT INTO records (user_id, baby_id, category, original_text, masked_text, record_date) VALUES
+(1, 1, 'feeding',
+ '오전 10시 서울아동병원 김철수 의사 진료 후 분유 200ml 수유',
+ '오전 10시 **병원 **의사 진료 후 분유 200ml 수유',
+ '2025-01-10 10:30:00'),
+(1, 1, 'sleep',
+ '낮잠 2시간, 잘 잔 편',
+ '낮잠 2시간, 잘 잔 편',
+ '2025-01-10 13:00:00');
+ 
+-- 마스킹 정보
+INSERT INTO masked_info (record_id, info_type, original_value, masked_value) VALUES
+(1, 'hospital', '서울아동병원',  '**병원'),
+(1, 'doctor',   '김철수 의사',   '**의사');
