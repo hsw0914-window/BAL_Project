@@ -6,31 +6,27 @@ import re
 from typing import Tuple, List, Dict
 
 
-# ── 카테고리 키워드 맵 ─────────────────────────────────────────
 CATEGORY_KEYWORDS: Dict[str, List[str]] = {
     "feeding":  ["수유", "분유", "모유", "이유식", "먹", "밥", "음식", "ml", "cc"],
     "sleep":    ["수면", "낮잠", "잠", "취침", "기상", "잤", "졸"],
     "diaper":   ["기저귀", "대변", "소변", "응가", "오줌", "변"],
     "health":   ["병원", "진료", "약", "열", "체온", "예방접종", "백신", "의사"],
     "growth":   ["몸무게", "키", "체중", "성장", "발달", "cm", "kg"],
-    "memo":     [],  # fallback
+    "memo":     [],
 }
 
-# ── 마스킹 패턴 ───────────────────────────────────────────────
+# 우선순위 순서 (점수 동점 시 앞에 있는 카테고리 우선)
+CATEGORY_PRIORITY = ["health", "feeding", "sleep", "diaper", "growth", "memo"]
+
 MASK_PATTERNS = [
-    # 병원명: XX병원, XX의원, XX클리닉
     (r"[가-힣a-zA-Z0-9]+(?:병원|의원|클리닉|센터)", "hospital", "**병원"),
-    # 의사명: 홍길동 의사/선생님
     (r"[가-힣]{2,4}\s*(?:의사|선생님|원장|간호사)", "doctor", "**의사"),
-    # 전화번호
     (r"0\d{1,2}-\d{3,4}-\d{4}", "phone", "***-****-****"),
-    # 주소
     (r"[가-힣]+(?:시|도)\s+[가-힣]+(?:구|군)\s+[가-힣]+(?:동|로|길)", "address", "**주소"),
 ]
 
 
 def classify_category(text: str) -> str:
-    """텍스트에서 카테고리를 자동 분류"""
     if not text:
         return "memo"
 
@@ -42,17 +38,12 @@ def classify_category(text: str) -> str:
             if kw in text_lower:
                 scores[category] += 1
 
-    best = max(scores, key=lambda c: scores[c])
+    # 동점 시 CATEGORY_PRIORITY 순서로 결정
+    best = max(CATEGORY_PRIORITY, key=lambda c: scores[c])
     return best if scores[best] > 0 else "memo"
 
 
 def mask_text(text: str) -> Tuple[str, List[Dict]]:
-    """
-    텍스트 마스킹 처리
-    Returns:
-        masked_text: 마스킹된 텍스트
-        masked_items: [{"info_type": ..., "original_value": ..., "masked_value": ...}]
-    """
     if not text:
         return text, []
 
@@ -60,23 +51,21 @@ def mask_text(text: str) -> Tuple[str, List[Dict]]:
     masked_items = []
 
     for pattern, info_type, replacement in MASK_PATTERNS:
+        # re.sub으로 통일 - 모든 매치를 한 번에 치환
         matches = re.findall(pattern, masked_text)
-        for match in matches:
-            masked_text = masked_text.replace(match, replacement, 1)
-            masked_items.append({
-                "info_type": info_type,
-                "original_value": match,
-                "masked_value": replacement,
-            })
+        if matches:
+            masked_text = re.sub(pattern, replacement, masked_text)
+            for match in matches:
+                masked_items.append({
+                    "info_type": info_type,
+                    "original_value": match,
+                    "masked_value": replacement,
+                })
 
     return masked_text, masked_items
 
 
 def process_record(text: str, category: str = None) -> Dict:
-    """
-    기록 텍스트 전처리 (분류 + 마스킹 통합)
-    category가 None이면 자동 분류
-    """
     resolved_category = category if category else classify_category(text)
     masked_text, masked_items = mask_text(text)
 

@@ -1,8 +1,10 @@
 import os
 import uuid
+import imghdr
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session, joinedload
 from app.core.config import get_settings
 from app.core.database import get_db
@@ -14,7 +16,7 @@ from app.services.ai_service import process_record
 settings = get_settings()
 router = APIRouter(prefix="/records", tags=["Records"])
 
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic"}
+ALLOWED_IMAGE_TYPES = {"jpeg", "png", "webp"}
 
 
 def _get_record_or_404(record_id: int, user_id: int, db: Session) -> Record:
@@ -35,7 +37,14 @@ def _verify_baby_owner(baby_id: int, user_id: int, db: Session) -> None:
         raise HTTPException(status_code=404, detail="아이 정보를 찾을 수 없습니다.")
 
 
-# ── 기록 생성 (텍스트) ─────────────────────────────────────────
+def _delete_image_file(image_path: str) -> None:
+    if image_path and os.path.exists(image_path):
+        try:
+            os.remove(image_path)
+        except OSError:
+            pass
+
+
 @router.post("", response_model=RecordResponse, status_code=201)
 def create_record(
     body: RecordCreate,
@@ -45,7 +54,6 @@ def create_record(
     """육아 기록 저장 (AI 자동 분류 + 마스킹 포함)"""
     _verify_baby_owner(body.baby_id, user_id, db)
 
-    # AI 분류 & 마스킹
     ai_result = process_record(body.original_text or "", body.category)
 
     record = Record(
@@ -58,9 +66,8 @@ def create_record(
         record_date=body.record_date,
     )
     db.add(record)
-    db.flush()  # record.id 확보
+    db.flush()
 
-    # 마스킹 정보 저장 (요청 body 우선, 없으면 AI 결과)
     items = body.masked_info if body.masked_info else ai_result["masked_info"]
     for item in items:
         mi = item if isinstance(item, dict) else item.model_dump()
@@ -71,7 +78,6 @@ def create_record(
     return record
 
 
-# ── 이미지 업로드 포함 기록 생성 ──────────────────────────────
 @router.post("/with-image", response_model=RecordResponse, status_code=201)
 async def create_record_with_image(
     baby_id: int = Form(...),
@@ -87,15 +93,17 @@ async def create_record_with_image(
 
     image_path = None
     if image:
-        if image.content_type not in ALLOWED_IMAGE_TYPES:
-            raise HTTPException(status_code=400, detail="지원하지 않는 이미지 형식입니다.")
         content = await image.read()
+
+        actual_type = imghdr.what(None, h=content)
+        if actual_type not in ALLOWED_IMAGE_TYPES:
+            raise HTTPException(status_code=400, detail="지원하지 않는 이미지 형식입니다. (jpeg/png/webp만 가능)")
+
         if len(content) > settings.MAX_FILE_SIZE:
             raise HTTPException(status_code=400, detail="파일 크기는 10MB 이하여야 합니다.")
 
         os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-        ext = image.filename.rsplit(".", 1)[-1]
-        filename = f"{uuid.uuid4().hex}.{ext}"
+        filename = f"{uuid.uuid4().hex}.{actual_type}"
         file_path = os.path.join(settings.UPLOAD_DIR, filename)
         with open(file_path, "wb") as f:
             f.write(content)
@@ -123,11 +131,29 @@ async def create_record_with_image(
     return record
 
 
-# ── 목록 조회 ─────────────────────────────────────────────────
+# ── 이미지 조회 (인증된 본인만 접근 가능) ─────────────────────
+@router.get("/{record_id}/image")
+def get_record_image(
+    record_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    """기록 이미지 조회 - 본인 기록만 접근 가능"""
+    record = _get_record_or_404(record_id, user_id, db)
+
+    if not record.image_path:
+        raise HTTPException(status_code=404, detail="이미지가 없는 기록입니다.")
+
+    if not os.path.exists(record.image_path):
+        raise HTTPException(status_code=404, detail="이미지 파일을 찾을 수 없습니다.")
+
+    return FileResponse(record.image_path)
+
+
 @router.get("", response_model=List[RecordResponse])
 def list_records(
-    baby_id: Optional[int] = Query(None, description="아이 ID 필터"),
-    category: Optional[str] = Query(None, description="카테고리 필터"),
+    baby_id: Optional[int] = Query(None),
+    category: Optional[str] = Query(None),
     start_date: Optional[datetime] = Query(None),
     end_date: Optional[datetime] = Query(None),
     skip: int = Query(0, ge=0),
@@ -135,7 +161,7 @@ def list_records(
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
-    """육아 기록 목록 조회 (필터링 + 페이지네이션)"""
+    """육아 기록 목록 조회"""
     q = (
         db.query(Record)
         .options(joinedload(Record.masked_info))
@@ -153,7 +179,6 @@ def list_records(
     return q.order_by(Record.record_date.desc()).offset(skip).limit(limit).all()
 
 
-# ── 상세 조회 ─────────────────────────────────────────────────
 @router.get("/{record_id}", response_model=RecordResponse)
 def get_record(
     record_id: int,
@@ -163,7 +188,6 @@ def get_record(
     return _get_record_or_404(record_id, user_id, db)
 
 
-# ── 수정 ─────────────────────────────────────────────────────
 @router.patch("/{record_id}", response_model=RecordResponse)
 def update_record(
     record_id: int,
@@ -175,13 +199,11 @@ def update_record(
     record = _get_record_or_404(record_id, user_id, db)
     update_data = body.model_dump(exclude_none=True)
 
-    # 텍스트가 변경되면 마스킹 재처리
     if "original_text" in update_data:
         ai_result = process_record(update_data["original_text"], update_data.get("category", record.category))
         update_data["masked_text"] = ai_result["masked_text"]
         update_data["category"] = ai_result["category"]
 
-        # 기존 마스킹 정보 삭제 후 재저장
         db.query(MaskedInfo).filter(MaskedInfo.record_id == record.id).delete()
         for item in ai_result["masked_info"]:
             db.add(MaskedInfo(record_id=record.id, **item))
@@ -194,13 +216,14 @@ def update_record(
     return record
 
 
-# ── 삭제 ─────────────────────────────────────────────────────
 @router.delete("/{record_id}", status_code=204)
 def delete_record(
     record_id: int,
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
+    """기록 삭제 (이미지 파일도 같이 삭제)"""
     record = _get_record_or_404(record_id, user_id, db)
+    _delete_image_file(record.image_path)
     db.delete(record)
     db.commit()

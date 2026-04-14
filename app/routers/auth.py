@@ -43,7 +43,7 @@ def register(body: UserRegister, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login(body: UserLogin, db: Session = Depends(get_db)):
-    """로그인 (아이디 + 비밀번호)"""
+    """로그인"""
     user = db.query(User).filter(User.username == body.username).first()
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 올바르지 않습니다.")
@@ -57,7 +57,7 @@ def login(body: UserLogin, db: Session = Depends(get_db)):
 
 @router.post("/refresh", response_model=TokenResponse)
 def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
-    """액세스 토큰 갱신"""
+    """액세스 토큰 갱신 - access_token만 새로 발급"""
     payload = decode_token(body.refresh_token)
     if payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Refresh token이 필요합니다.")
@@ -67,9 +67,10 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
 
+    # access_token만 새로 발급, refresh_token은 기존 것 유지
     return TokenResponse(
         access_token=create_access_token(user.id),
-        refresh_token=create_refresh_token(user.id),
+        refresh_token=body.refresh_token,
         user=UserResponse.model_validate(user),
     )
 

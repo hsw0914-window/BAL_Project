@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     DB_PASSWORD: str = ""
     DB_NAME: str = "babycare"
 
-    # JWT
-    SECRET_KEY: str = "change-this-secret-key"
+    # JWT - 기본값 없음: .env에 SECRET_KEY 없으면 서버 시작 안 됨
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
