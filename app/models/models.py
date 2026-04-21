@@ -55,6 +55,18 @@ class Record(Base):
     baby        = relationship("Baby", back_populates="records")
     masked_info = relationship("MaskedInfo", back_populates="record", cascade="all, delete-orphan")
 
+    # 카테고리별 상세 기록 연결
+    breastfeeding = relationship("BreastfeedingRecord", back_populates="record", cascade="all, delete-orphan")
+    formula       = relationship("FormulaRecord",       back_populates="record", cascade="all, delete-orphan")
+    baby_food     = relationship("BabyFoodRecord",      back_populates="record", cascade="all, delete-orphan")
+    diaper        = relationship("DiaperRecord",        back_populates="record", cascade="all, delete-orphan")
+    sleep         = relationship("SleepRecord",         back_populates="record", cascade="all, delete-orphan")
+    growth        = relationship("GrowthRecord",        back_populates="record", cascade="all, delete-orphan")
+    development   = relationship("DevelopmentRecord",   back_populates="record", cascade="all, delete-orphan")
+    health        = relationship("HealthRecord",        back_populates="record", cascade="all, delete-orphan")
+    hospital      = relationship("HospitalRecord",      back_populates="record", cascade="all, delete-orphan")
+    daily         = relationship("DailyRecord",         back_populates="record", cascade="all, delete-orphan")
+
 
 class MaskedInfo(Base):
     __tablename__ = "masked_info"
