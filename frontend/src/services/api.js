@@ -33,3 +33,41 @@ export async function uploadDocument(imageUri) {
 export function getMaskedImageUrl(path) {
   return `${API_BASE_URL}${path}`;
 }
+
+/**
+ * 육아 기록 텍스트를 AI로 분류하여 저장
+ * @param {string} text - 사용자가 입력한 자유 형식 텍스트
+ * @returns {Promise<Array>} 저장된 기록 배열 [{id, category, summary, original_text}]
+ */
+export async function createRecord(text) {
+  const response = await client.post('/api/records', { text });
+  return response.data;
+}
+
+/**
+ * 전체 기록 조회
+ * @returns {Promise<Array>}
+ */
+export async function getRecords() {
+  const response = await client.get('/api/records');
+  return response.data;
+}
+
+/**
+ * 카테고리별 기록 조회
+ * @param {string} category
+ * @returns {Promise<Array>}
+ */
+export async function getRecordsByCategory(category) {
+  const response = await client.get(`/api/records/${encodeURIComponent(category)}`);
+  return response.data;
+}
+
+/**
+ * 기록 삭제
+ * @param {number} id
+ */
+export async function deleteRecord(id) {
+  const response = await client.delete(`/api/records/${id}`);
+  return response.data;
+}
