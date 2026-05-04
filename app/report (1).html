@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>육아 리포트</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif; background: #f5f5f3; color: #1a1a1a; }
+
+  .header { background: #fff; padding: 20px 24px 0; border-bottom: 1px solid #e8e8e8; }
+  .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .header h1 { font-size: 18px; font-weight: 600; }
+
+  /* 로그인 폼 */
+  .login-wrap { max-width: 360px; margin: 60px auto; background: #fff; border-radius: 16px; padding: 32px; border: 1px solid #ececec; }
+  .login-wrap h2 { font-size: 18px; font-weight: 600; margin-bottom: 24px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { font-size: 13px; color: #666; display: block; margin-bottom: 5px; }
+  .form-group input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; font-family: inherit; outline: none; }
+  .form-group input:focus { border-color: #3266ad; }
+  .btn-login { width: 100%; padding: 12px; background: #3266ad; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; font-family: inherit; margin-top: 6px; }
+  .btn-login:hover { background: #2554a0; }
+  .error-msg { color: #e05; font-size: 13px; margin-top: 10px; display: none; }
+
+  /* 탭 */
+  .tabs { display: flex; }
+  .tab { padding: 12px 24px; font-size: 14px; color: #999; cursor: pointer; border-bottom: 2px solid transparent; background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; }
+  .tab.active { color: #3266ad; border-bottom-color: #3266ad; font-weight: 500; }
+
+  /* 패널 */
+  .panel { display: none; padding: 24px; max-width: 900px; margin: 0 auto; }
+  .panel.active { display: block; }
+
+  /* 날짜 필터 */
+  .date-filter { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+  .date-filter input[type=date] { padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; font-family: inherit; }
+  .btn-fetch { padding: 8px 18px; background: #3266ad; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; }
+  .btn-fetch:hover { background: #2554a0; }
+
+  /* 요약 카드 */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  .metric { background: #fff; border-radius: 12px; padding: 16px; border: 1px solid #ececec; }
+  .metric-label { font-size: 12px; color: #999; margin-bottom: 6px; }
+  .metric-value { font-size: 22px; font-weight: 600; color: #1a1a1a; }
+  .metric-sub { font-size: 11px; color: #bbb; margin-top: 3px; }
+
+  /* 차트 섹션 */
+  .chart-section { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #ececec; }
+  .chart-title { font-size: 13px; color: #888; margin-bottom: 16px; }
+  .chart-wrap { position: relative; width: 100%; }
+
+  .legend { display: flex; gap: 20px; margin-bottom: 12px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #888; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  .toggle-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .toggle-btn { padding: 6px 16px; border-radius: 8px; border: 1px solid #ddd; background: #fff; font-size: 13px; color: #888; cursor: pointer; font-family: inherit; }
+  .toggle-btn.active { background: #3266ad; border-color: #3266ad; color: #fff; font-weight: 500; }
+
+  .loading { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+
+  @media (max-width: 600px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .tab { padding: 12px 14px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 로그인 화면 -->
+<div id="login-screen">
+  <div class="login-wrap">
+    <h2>육아 리포트 로그인</h2>
+    <div class="form-group">
+      <label>아이디</label>
+      <input type="text" id="inp-username" placeholder="demo" value="demo" />
+    </div>
+    <div class="form-group">
+      <label>비밀번호</label>
+      <input type="password" id="inp-password" placeholder="demo1234!" value="demo1234!" />
+    </div>
+    <button class="btn-login" onclick="doLogin()">로그인</button>
+    <div class="error-msg" id="login-error">아이디 또는 비밀번호를 확인해주세요.</div>
+  </div>
+</div>
+
+<!-- 메인 화면 -->
+<div id="main-screen" style="display:none">
+  <div class="header">
+    <div class="header-top">
+      <h1>육아 리포트</h1>
+      <button onclick="doLogout()" style="font-size:13px;color:#999;background:none;border:none;cursor:pointer;">로그아웃</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('feeding', this)">수유량</button>
+      <button class="tab" onclick="switchTab('sleep', this)">수면 패턴</button>
+      <button class="tab" onclick="switchTab('growth', this)">성장 곡선</button>
+    </div>
+  </div>
+
+  <!-- 수유량 -->
+  <div id="panel-feeding" class="panel active">
+    <div class="date-filter">
+      <input type="date" id="feeding-start" />
+      <span style="color:#aaa">~</span>
+      <input type="date" id="feeding-end" />
+      <button class="btn-fetch" onclick="loadFeeding()">조회</button>
+    </div>
+    <div id="feeding-content"><div class="loading">날짜를 선택하고 조회해주세요.</div></div>
+  </div>
+
+  <!-- 수면 패턴 -->
+  <div id="panel-sleep" class="panel">
+    <div class="date-filter">
+      <input type="date" id="sleep-start" />
+      <span style="color:#aaa">~</span>
+      <input type="date" id="sleep-end" />
+      <button class="btn-fetch" onclick="loadSleep()">조회</button>
+    </div>
+    <div id="sleep-content"><div class="loading">날짜를 선택하고 조회해주세요.</div></div>
+  </div>
+
+  <!-- 성장 곡선 -->
+  <div id="panel-growth" class="panel">
+    <div id="growth-content"><div class="loading">불러오는 중...</div></div>
+  </div>
+</div>
+
+<script>
+// ── 설정 ─────────────────────────────────────────────────────
+const API_BASE = 'http://localhost:8000';  // 서버 주소 맞게 수정
+let ACCESS_TOKEN = '';
+let BABY_ID = null;
+
+// 차트 인스턴스 (중복 생성 방지)
+const charts = {};
+
+// ── 날짜 헬퍼 ─────────────────────────────────────────────────
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+function daysAgo(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+function shortDate(str) {
+  // "2025-05-01" → "5/1"
+  const [, m, d] = str.split('-');
+  return `${parseInt(m)}/${parseInt(d)}`;
+}
+
+// ── 기본 날짜 세팅 ────────────────────────────────────────────
+function initDates() {
+  document.getElementById('feeding-start').value = daysAgo(6);
+  document.getElementById('feeding-end').value   = today();
+  document.getElementById('sleep-start').value   = daysAgo(6);
+  document.getElementById('sleep-end').value     = today();
+}
+
+// ── API 헬퍼 ─────────────────────────────────────────────────
+async function apiFetch(path, options = {}) {
+  const res = await fetch(API_BASE + path, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${ACCESS_TOKEN}`,
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// ── 로그인 ───────────────────────────────────────────────────
+async function doLogin() {
+  const username = document.getElementById('inp-username').value.trim();
+  const password = document.getElementById('inp-password').value;
+  try {
+    const data = await apiFetch('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+    ACCESS_TOKEN = data.access_token;
+
+    // 첫 번째 아이 ID 가져오기
+    const babies = await apiFetch('/babies');
+    if (!babies.length) { alert('등록된 아이가 없습니다.'); return; }
+    BABY_ID = babies[0].id;
+
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-screen').style.display = 'block';
+    document.getElementById('login-error').style.display = 'none';
+
+    initDates();
+    loadFeeding();
+    loadGrowth();
+  } catch {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+
+function doLogout() {
+  ACCESS_TOKEN = '';
+  BABY_ID = null;
+  document.getElementById('login-screen').style.display = 'block';
+  document.getElementById('main-screen').style.display = 'none';
+}
+
+// ── 탭 전환 ──────────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── 차트 생성 헬퍼 ────────────────────────────────────────────
+function makeChart(id, config) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), config);
+}
+
+const BASE_OPT = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+  scales: {
+    x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#aaa' } },
+    y: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 11 }, color: '#aaa' } },
+  },
+};
+
+// ── 수유량 리포트 ─────────────────────────────────────────────
+async function loadFeeding() {
+  const start = document.getElementById('feeding-start').value;
+  const end   = document.getElementById('feeding-end').value;
+  document.getElementById('feeding-content').innerHTML = '<div class="loading">불러오는 중...</div>';
+  try {
+    const d = await apiFetch(`/reports/${BABY_ID}/feeding?start_date=${start}T00:00:00&end_date=${end}T23:59:59`);
+    const labels = d.daily.map(x => shortDate(x.date));
+
+    document.getElementById('feeding-content').innerHTML = `
+      <div class="metrics">
+        <div class="metric"><div class="metric-label">일 평균 분유량</div><div class="metric-value">${d.avg_daily_formula_ml} ml</div></div>
+        <div class="metric"><div class="metric-label">일 평균 모유 시간</div><div class="metric-value">${d.avg_daily_breast_min} 분</div></div>
+        <div class="metric"><div class="metric-label">모유 수유 횟수</div><div class="metric-value">${d.avg_breast_per_day}회/일</div></div>
+        <div class="metric"><div class="metric-label">총 수유 횟수</div><div class="metric-value">${d.total_feeds}회</div></div>
+      </div>
+      <div class="chart-section">
+        <div class="chart-title">날짜별 수유량</div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#3266ad"></div>분유 (ml)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#1D9E75"></div>모유 수유 시간 (분)</div>
+        </div>
+        <div class="chart-wrap" style="height:240px"><canvas id="feedingBar"></canvas></div>
+      </div>
+      <div class="chart-section">
+        <div class="chart-title">날짜별 분유 수유 횟수</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="feedingCount"></canvas></div>
+      </div>
+    `;
+
+    makeChart('feedingBar', {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: '분유 (ml)', data: d.daily.map(x => x.formula_ml), backgroundColor: '#3266ad', borderRadius: 5 },
+          { label: '모유 (분)', data: d.daily.map(x => x.breast_min), backgroundColor: '#1D9E75', borderRadius: 5 },
+        ],
+      },
+      options: BASE_OPT,
+    });
+
+    makeChart('feedingCount', {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: '분유 횟수', data: d.daily.map(x => x.formula_count), backgroundColor: '#3266adaa', borderRadius: 5 },
+          { label: '모유 횟수', data: d.daily.map(x => x.breast_count), backgroundColor: '#1D9E75aa', borderRadius: 5 },
+        ],
+      },
+      options: { ...BASE_OPT, scales: { ...BASE_OPT.scales, y: { ...BASE_OPT.scales.y, ticks: { ...BASE_OPT.scales.y.ticks, stepSize: 1 } } } },
+    });
+
+  } catch (e) {
+    document.getElementById('feeding-content').innerHTML = `<div class="loading" style="color:#e05">오류: ${e.message}</div>`;
+  }
+}
+
+// ── 수면 패턴 리포트 ──────────────────────────────────────────
+async function loadSleep() {
+  const start = document.getElementById('sleep-start').value;
+  const end   = document.getElementById('sleep-end').value;
+  document.getElementById('sleep-content').innerHTML = '<div class="loading">불러오는 중...</div>';
+  try {
+    const d = await apiFetch(`/reports/${BABY_ID}/sleep?start_date=${start}T00:00:00&end_date=${end}T23:59:59`);
+    const labels = d.daily.map(x => shortDate(x.date));
+
+    document.getElementById('sleep-content').innerHTML = `
+      <div class="metrics">
+        <div class="metric"><div class="metric-label">일 평균 수면</div><div class="metric-value">${d.avg_total_hours}시간</div></div>
+        <div class="metric"><div class="metric-label">야간 수면</div><div class="metric-value">${d.avg_night_hours}시간</div></div>
+        <div class="metric"><div class="metric-label">낮잠 횟수</div><div class="metric-value">${d.avg_nap_count}회/일</div></div>
+        <div class="metric"><div class="metric-label">낮잠 시간</div><div class="metric-value">${d.avg_nap_hours}시간</div></div>
+      </div>
+      <div class="chart-section">
+        <div class="chart-title">날짜별 수면 시간</div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#3266ad"></div>야간 수면 (시간)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#9FE1CB"></div>낮잠 (시간)</div>
+        </div>
+        <div class="chart-wrap" style="height:240px"><canvas id="sleepBar"></canvas></div>
+      </div>
+      <div class="chart-section">
+        <div class="chart-title">낮잠 횟수 추이</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="sleepNapCount"></canvas></div>
+      </div>
+    `;
+
+    makeChart('sleepBar', {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: '야간 수면 (시간)', data: d.daily.map(x => +(x.night_min/60).toFixed(1)), backgroundColor: '#3266ad', borderRadius: 5, stack: 'sleep' },
+          { label: '낮잠 (시간)',      data: d.daily.map(x => +(x.nap_min/60).toFixed(1)),   backgroundColor: '#9FE1CB', borderRadius: 5, stack: 'sleep' },
+        ],
+      },
+      options: { ...BASE_OPT, scales: { ...BASE_OPT.scales, x: { ...BASE_OPT.scales.x, stacked: true }, y: { ...BASE_OPT.scales.y, stacked: true, suggestedMax: 18 } } },
+    });
+
+    makeChart('sleepNapCount', {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{ label: '낮잠 횟수', data: d.daily.map(x => x.nap_count), borderColor: '#3266ad', backgroundColor: '#3266ad18', fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#3266ad' }],
+      },
+      options: { ...BASE_OPT, scales: { ...BASE_OPT.scales, y: { ...BASE_OPT.scales.y, ticks: { ...BASE_OPT.scales.y.ticks, stepSize: 1 } } } },
+    });
+
+  } catch (e) {
+    document.getElementById('sleep-content').innerHTML = `<div class="loading" style="color:#e05">오류: ${e.message}</div>`;
+  }
+}
+
+// ── 성장 곡선 리포트 ──────────────────────────────────────────
+// WHO 50백분위 기준 (여아, 1~7개월)
+const WHO_WEIGHT = [4.2, 5.1, 5.8, 6.4, 7.0, 7.5, 7.9];
+const WHO_HEIGHT = [53.7, 57.1, 59.8, 62.1, 64.0, 65.7, 67.3];
+const WHO_HEAD   = [36.5, 38.3, 39.8, 41.0, 42.0, 42.8, 43.5];
+
+let growthData = null;
+let growthMetric = 'weight';
+
+async function loadGrowth() {
+  document.getElementById('growth-content').innerHTML = '<div class="loading">불러오는 중...</div>';
+  try {
+    growthData = await apiFetch(`/reports/${BABY_ID}/growth`);
+    renderGrowth();
+  } catch (e) {
+    document.getElementById('growth-content').innerHTML = `<div class="loading" style="color:#e05">오류: ${e.message}</div>`;
+  }
+}
+
+function renderGrowth() {
+  const d = growthData;
+  const labels = d.items.map((x, i) => `${i + 1}개월`);
+
+  document.getElementById('growth-content').innerHTML = `
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">현재 몸무게</div><div class="metric-value">${d.latest_weight_kg ?? '-'} kg</div></div>
+      <div class="metric"><div class="metric-label">현재 키</div><div class="metric-value">${d.latest_height_cm ?? '-'} cm</div></div>
+      <div class="metric"><div class="metric-label">두위</div><div class="metric-value">${d.latest_head_cm ?? '-'} cm</div></div>
+      <div class="metric"><div class="metric-label">측정 횟수</div><div class="metric-value">${d.items.length}회</div></div>
+    </div>
+    <div class="chart-section">
+      <div class="toggle-row">
+        <button class="toggle-btn active" onclick="setGrowthMetric('weight', this)">몸무게</button>
+        <button class="toggle-btn" onclick="setGrowthMetric('height', this)">키</button>
+        <button class="toggle-btn" onclick="setGrowthMetric('head', this)">두위</button>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#3266ad"></div><span id="growth-legend-baby">아이 몸무게 (kg)</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ccc;border:1px solid #bbb"></div>WHO 50백분위</div>
+      </div>
+      <div class="chart-wrap" style="height:300px"><canvas id="growthLine"></canvas></div>
+    </div>
+  `;
+
+  drawGrowthChart(labels);
+}
+
+function drawGrowthChart(labels) {
+  const d = growthData;
+  const metricMap = {
+    weight: { data: d.items.map(x => x.weight_kg), who: WHO_WEIGHT, label: '아이 몸무게 (kg)' },
+    height: { data: d.items.map(x => x.height_cm), who: WHO_HEIGHT, label: '아이 키 (cm)' },
+    head:   { data: d.items.map(x => x.head_cm),   who: WHO_HEAD,   label: '아이 두위 (cm)' },
+  };
+  const m = metricMap[growthMetric];
+  document.getElementById('growth-legend-baby').textContent = m.label;
+
+  makeChart('growthLine', {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: '아이', data: m.data, borderColor: '#3266ad', backgroundColor: '#3266ad18', fill: true, tension: 0.3, pointRadius: 5, pointBackgroundColor: '#3266ad' },
+        { label: 'WHO', data: m.who.slice(0, d.items.length), borderColor: '#ccc', backgroundColor: 'transparent', borderDash: [5, 4], tension: 0.3, pointRadius: 3, pointBackgroundColor: '#ccc' },
+      ],
+    },
+    options: BASE_OPT,
+  });
+}
+
+function setGrowthMetric(metric, btn) {
+  growthMetric = metric;
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const labels = growthData.items.map((_, i) => `${i + 1}개월`);
+  drawGrowthChart(labels);
+}
+</script>
+</body>
+</html>
