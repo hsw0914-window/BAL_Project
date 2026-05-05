@@ -19,6 +19,14 @@ const MENU_ITEMS = [
     accent: '#22C55E',
   },
   {
+    label: '리포트',
+    description: '수유량, 수면 패턴, 성장 곡선을 확인해요',
+    emoji: '📊',
+    screen: 'Report',
+    color: '#F5F3FF',
+    accent: '#7C3AED',
+  },
+  {
     label: '서류 촬영',
     description: '병원 서류를 촬영해 OCR로 분석해요',
     emoji: '📷',
