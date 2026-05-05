@@ -71,3 +71,25 @@ export async function deleteRecord(id) {
   const response = await client.delete(`/api/records/${id}`);
   return response.data;
 }
+
+// ── 통계 API ────────────────────────────────────
+
+export async function getFeedingStats(days = 7) {
+  const response = await client.get(`/api/stats/feeding?days=${days}`);
+  return response.data;
+}
+
+export async function getSleepStats(days = 7) {
+  const response = await client.get(`/api/stats/sleep?days=${days}`);
+  return response.data;
+}
+
+export async function getGrowthStats() {
+  const response = await client.get('/api/stats/growth');
+  return response.data;
+}
+
+export async function getSummaryStats(days = 7) {
+  const response = await client.get(`/api/stats/summary?days=${days}`);
+  return response.data;
+}

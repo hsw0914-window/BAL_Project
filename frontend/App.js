@@ -5,6 +5,7 @@ import CameraScreen from './src/screens/CameraScreen';
 import ResultScreen from './src/screens/ResultScreen';
 import RecordInputScreen from './src/screens/RecordInputScreen';
 import RecordListScreen from './src/screens/RecordListScreen';
+import ReportScreen from './src/screens/ReportScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -15,6 +16,7 @@ export default function App() {
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="RecordInput" component={RecordInputScreen} />
         <Stack.Screen name="RecordList" component={RecordListScreen} />
+        <Stack.Screen name="Report" component={ReportScreen} />
         <Stack.Screen name="Camera" component={CameraScreen} />
         <Stack.Screen name="Result" component={ResultScreen} />
       </Stack.Navigator>
