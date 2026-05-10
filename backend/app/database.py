@@ -123,5 +123,15 @@ def init_db():
         )
     """)
 
+    # 아기 프로필 (싱글 row)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS babies (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            name       TEXT,
+            gender     TEXT,
+            birth_date TEXT
+        )
+    """)
+
     conn.commit()
     conn.close()

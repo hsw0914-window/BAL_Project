@@ -1,23 +1,20 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, ActivityIndicator, ScrollView, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { createRecord } from '../services/api';
+import { useTheme, CATEGORY_ICONS } from '../theme';
+import ScreenHeader from '../components/ScreenHeader';
 
-const CATEGORY_COLORS = {
-  '모유기록':   { bg: '#FDF2F8', text: '#9D174D' },
-  '분유기록':   { bg: '#FFF7ED', text: '#9A3412' },
-  '이유식기록': { bg: '#FFFBEB', text: '#92400E' },
-  '기저귀기록': { bg: '#F0FDF4', text: '#166534' },
-  '수면기록':   { bg: '#EFF6FF', text: '#1E40AF' },
-  '성장기록':   { bg: '#F5F3FF', text: '#5B21B6' },
-  '발달기록':   { bg: '#FFF1F2', text: '#9F1239' },
-  '건강기록':   { bg: '#FEF2F2', text: '#991B1B' },
-  '병원기록':   { bg: '#ECFDF5', text: '#065F46' },
-  '일상기록':   { bg: '#F8FAFC', text: '#475569' },
-};
+const EXAMPLES = [
+  '오전 10시 분유 150ml',
+  '낮잠 1시간 30분',
+  '체온 38.2도, 타이레놀 5ml',
+  '대변 봤음',
+];
 
 function buildChips(category, detail = {}) {
   if (!detail) return [];
@@ -58,6 +55,8 @@ function buildChips(category, detail = {}) {
 }
 
 export default function RecordInputScreen({ navigation }) {
+  const { C, CATEGORY_COLORS } = useTheme();
+  const styles = useMemo(() => makeStyles(C), [C]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
@@ -81,75 +80,142 @@ export default function RecordInputScreen({ navigation }) {
     setText('');
   }
 
+  function appendExample(ex) {
+    setText((prev) => (prev.trim() ? `${prev.trim()}\n${ex}` : ex));
+  }
+
+  const canSubmit = !!text.trim() && !loading;
+
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
-        {/* 헤더 */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backText}>← 뒤로</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>육아 기록 입력</Text>
-          <Text style={styles.subtitle}>오늘 있었던 일을 자유롭게 적어주세요</Text>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+      <ScreenHeader
+        title="기록 입력"
+        subtitle="자유롭게 적으면 AI가 카테고리로 분류해요"
+        onBack={() => navigation.goBack()}
+      />
+
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* AI 안내 카드 */}
+        <View style={styles.aiHint}>
+          <View style={styles.aiHintIcon}>
+            <Ionicons name="sparkles" size={14} color={C.amberInk} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.aiHintTitle}>AI 자동 분류</Text>
+            <Text style={styles.aiHintSub}>
+              한 문장에 여러 일을 적어도 카테고리별로 나눠 저장됩니다
+            </Text>
+          </View>
         </View>
 
         {/* 입력창 */}
-        <TextInput
-          style={styles.input}
-          multiline
-          placeholder={
-            '예시) 오전 10시에 분유 180ml 먹였고, 낮잠을 두 시간 잤어.\n오후에 체온이 37.8도라 병원 다녀왔음.'
-          }
-          placeholderTextColor="#94A3B8"
-          value={text}
-          onChangeText={setText}
-          textAlignVertical="top"
-        />
+        <View style={styles.inputWrap}>
+          <Text style={styles.inputLabel}>오늘의 기록</Text>
+          <TextInput
+            style={styles.input}
+            multiline
+            placeholder={
+              '예시) 오전 10시에 분유 180ml 먹였고, 낮잠을 두 시간 잤어.\n오후에 체온이 37.8도라 병원 다녀왔음.'
+            }
+            placeholderTextColor={C.inkMute}
+            value={text}
+            onChangeText={setText}
+            textAlignVertical="top"
+          />
+          <View style={styles.inputFootRow}>
+            {text.length > 0 ? (
+              <TouchableOpacity onPress={() => setText('')} hitSlop={6}>
+                <Text style={styles.clearText}>지우기</Text>
+              </TouchableOpacity>
+            ) : (
+              <View />
+            )}
+            <Text style={styles.charCount}>{text.length}자</Text>
+          </View>
+        </View>
 
-        <Text style={styles.charCount}>{text.length}자</Text>
+        {/* 빠른 예시 */}
+        <Text style={styles.sectionTitle}>빠른 예시</Text>
+        <View style={styles.exampleRow}>
+          {EXAMPLES.map((ex) => (
+            <TouchableOpacity
+              key={ex}
+              style={styles.exampleChip}
+              onPress={() => appendExample(ex)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="add" size={12} color={C.inkSoft} />
+              <Text style={styles.exampleChipText}>{ex}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
 
-        {/* 제출 버튼 */}
+      {/* 제출 버튼 (고정) */}
+      <View style={styles.bottomBar}>
         <TouchableOpacity
-          style={[styles.submitBtn, (!text.trim() || loading) && styles.submitBtnDisabled]}
+          style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
           onPress={handleSubmit}
-          disabled={!text.trim() || loading}
+          disabled={!canSubmit}
           activeOpacity={0.85}
         >
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.submitBtnText}>AI 분류 후 저장</Text>
-          }
+          {loading ? (
+            <View style={styles.submitInner}>
+              <ActivityIndicator color={C.forestInk} size="small" />
+              <Text style={styles.submitText}>분석 중...</Text>
+            </View>
+          ) : (
+            <View style={styles.submitInner}>
+              <Ionicons name="sparkles" size={16} color={C.forestInk} />
+              <Text style={styles.submitText}>AI 분류 후 저장</Text>
+            </View>
+          )}
         </TouchableOpacity>
-
-        {loading && (
-          <Text style={styles.loadingHint}>AI가 내용을 분석하고 있어요...</Text>
-        )}
       </View>
 
       {/* 결과 모달 */}
       <Modal visible={!!results} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>저장 완료!</Text>
-            <Text style={styles.modalSubtitle}>
-              {results?.length}개 카테고리로 분류되어 저장됐어요
-            </Text>
+            <View style={styles.modalHandle} />
+
+            <View style={styles.modalHeadRow}>
+              <View style={styles.modalCheck}>
+                <Ionicons name="checkmark" size={18} color={C.forestInk} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>저장 완료</Text>
+                <Text style={styles.modalSubtitle}>
+                  {results?.length}개 카테고리로 분류되어 저장됐어요
+                </Text>
+              </View>
+            </View>
 
             <ScrollView style={styles.resultList} showsVerticalScrollIndicator={false}>
               {results?.map((item) => {
                 const color = CATEGORY_COLORS[item.category] || CATEGORY_COLORS['일상기록'];
+                const icon = CATEGORY_ICONS[item.category] || 'reader-outline';
                 const chips = buildChips(item.category, item.detail);
                 return (
-                  <View key={item.id} style={[styles.resultCard, { backgroundColor: color.bg }]}>
-                    <Text style={[styles.resultCategory, { color: color.text }]}>
-                      {item.category}
-                    </Text>
+                  <View key={item.id} style={styles.resultCard}>
+                    <View style={styles.resultTopRow}>
+                      <View style={[styles.resultBadge, { backgroundColor: color.bg }]}>
+                        <Ionicons name={icon} size={12} color={color.ink} />
+                        <Text style={[styles.resultBadgeText, { color: color.ink }]}>
+                          {item.category}
+                        </Text>
+                      </View>
+                    </View>
                     <Text style={styles.resultSummary}>{item.summary}</Text>
                     {chips.length > 0 && (
                       <View style={styles.chipRow}>
                         {chips.map((chip, idx) => (
-                          <View key={idx} style={[styles.chip, { borderColor: color.text + '40' }]}>
-                            <Text style={[styles.chipText, { color: color.text }]}>{chip}</Text>
+                          <View key={idx} style={styles.chip}>
+                            <Text style={styles.chipText}>{chip}</Text>
                           </View>
                         ))}
                       </View>
@@ -164,7 +230,7 @@ export default function RecordInputScreen({ navigation }) {
                 style={styles.modalBtnOutline}
                 onPress={() => { setResults(null); navigation.navigate('RecordList'); }}
               >
-                <Text style={styles.modalBtnOutlineText}>기록 목록 보기</Text>
+                <Text style={styles.modalBtnOutlineText}>목록 보기</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalBtn} onPress={handleClose}>
                 <Text style={styles.modalBtnText}>새 기록 입력</Text>
@@ -177,84 +243,129 @@ export default function RecordInputScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F8FAFC' },
-  container: { flex: 1, padding: 24 },
+const makeStyles = (C) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: C.bg },
+  scroll: { paddingHorizontal: 20, paddingBottom: 100 },
 
-  header: { marginBottom: 20 },
-  backBtn: { marginBottom: 12 },
-  backText: { fontSize: 14, color: '#3B82F6', fontWeight: '600' },
-  title: { fontSize: 22, fontWeight: '800', color: '#1E293B' },
-  subtitle: { fontSize: 13, color: '#64748B', marginTop: 4 },
+  // AI 안내 카드
+  aiHint: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    padding: 14, borderRadius: 14,
+    backgroundColor: C.amberBg, marginBottom: 18,
+  },
+  aiHintIcon: {
+    width: 28, height: 28, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  aiHintTitle: { fontSize: 13, fontWeight: '900', color: C.amberInk, letterSpacing: -0.2 },
+  aiHintSub: { fontSize: 11, color: C.amberInk, marginTop: 2, opacity: 0.85 },
 
+  // 입력창
+  inputWrap: {
+    backgroundColor: C.card, borderRadius: 16,
+    padding: 16, borderWidth: 1, borderColor: C.border,
+  },
+  inputLabel: {
+    fontSize: 11, fontWeight: '800', color: C.inkSoft,
+    letterSpacing: 0.6, marginBottom: 8, textTransform: 'uppercase',
+  },
   input: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 16,
-    fontSize: 15,
-    color: '#1E293B',
-    lineHeight: 24,
+    minHeight: 160, fontSize: 14, color: C.ink, lineHeight: 22, padding: 0,
   },
-  charCount: { textAlign: 'right', fontSize: 12, color: '#94A3B8', marginTop: 6 },
+  inputFootRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginTop: 10, paddingTop: 10,
+    borderTopWidth: 1, borderTopColor: C.borderSoft,
+  },
+  clearText: { fontSize: 11, color: C.inkSoft, fontWeight: '700' },
+  charCount: { fontSize: 11, color: C.inkMute },
 
-  submitBtn: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 16,
+  // 빠른 예시
+  sectionTitle: {
+    fontSize: 12, fontWeight: '800', color: C.ink,
+    marginTop: 22, marginBottom: 10, letterSpacing: 0.3,
   },
-  submitBtnDisabled: { backgroundColor: '#CBD5E1' },
-  submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  loadingHint: { textAlign: 'center', color: '#64748B', fontSize: 13, marginTop: 10 },
+  exampleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  exampleChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingVertical: 8, paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: C.card,
+    borderWidth: 1, borderColor: C.border,
+  },
+  exampleChipText: { fontSize: 12, color: C.ink, fontWeight: '600' },
+
+  // Bottom bar
+  bottomBar: {
+    paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14,
+    backgroundColor: C.bg,
+    borderTopWidth: 1, borderTopColor: C.border,
+  },
+  submitBtn: {
+    backgroundColor: C.forest, borderRadius: 14, paddingVertical: 16,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  submitBtnDisabled: { backgroundColor: C.inkMute, opacity: 0.5 },
+  submitInner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  submitText: { color: C.forestInk, fontSize: 15, fontWeight: '800', letterSpacing: -0.2 },
 
   // 모달
   modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    flex: 1, backgroundColor: 'rgba(20,19,17,0.45)',
     justifyContent: 'flex-end',
   },
   modalBox: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 28,
-    maxHeight: '75%',
+    backgroundColor: C.bg,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingHorizontal: 20, paddingBottom: 24, paddingTop: 8,
+    maxHeight: '78%',
   },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B', marginBottom: 4 },
-  modalSubtitle: { fontSize: 13, color: '#64748B', marginBottom: 20 },
+  modalHandle: {
+    alignSelf: 'center', width: 40, height: 4,
+    borderRadius: 2, backgroundColor: C.border, marginBottom: 14,
+  },
+  modalHeadRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16,
+  },
+  modalCheck: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: C.forest,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  modalTitle: { fontSize: 18, fontWeight: '900', color: C.ink, letterSpacing: -0.3 },
+  modalSubtitle: { fontSize: 12, color: C.inkSoft, marginTop: 2 },
 
-  resultList: { marginBottom: 20 },
+  resultList: { marginBottom: 16 },
   resultCard: {
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
+    backgroundColor: C.card, borderRadius: 14, padding: 14,
+    marginBottom: 10, borderWidth: 1, borderColor: C.border,
   },
-  resultCategory: { fontSize: 13, fontWeight: '700', marginBottom: 4 },
-  resultSummary: { fontSize: 14, color: '#334155', lineHeight: 20, marginBottom: 8 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
-  chipText: { fontSize: 12, fontWeight: '600' },
+  resultTopRow: { flexDirection: 'row', marginBottom: 6 },
+  resultBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999,
+  },
+  resultBadgeText: { fontSize: 11, fontWeight: '800' },
+  resultSummary: { fontSize: 14, color: C.ink, fontWeight: '700', lineHeight: 20 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  chip: {
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 8, borderWidth: 1, borderColor: C.border,
+    backgroundColor: C.cardSoft,
+  },
+  chipText: { fontSize: 11, color: C.ink, fontWeight: '700' },
 
-  modalActions: { flexDirection: 'row', gap: 12 },
+  modalActions: { flexDirection: 'row', gap: 10 },
   modalBtnOutline: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#3B82F6',
-    paddingVertical: 13,
-    alignItems: 'center',
+    flex: 1, borderRadius: 12,
+    borderWidth: 1.5, borderColor: C.ink,
+    paddingVertical: 13, alignItems: 'center',
   },
-  modalBtnOutlineText: { color: '#3B82F6', fontWeight: '700', fontSize: 14 },
+  modalBtnOutlineText: { color: C.ink, fontWeight: '800', fontSize: 13 },
   modalBtn: {
-    flex: 1,
-    backgroundColor: '#3B82F6',
-    borderRadius: 12,
-    paddingVertical: 13,
-    alignItems: 'center',
+    flex: 1, backgroundColor: C.ink, borderRadius: 12,
+    paddingVertical: 13, alignItems: 'center',
   },
-  modalBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  modalBtnText: { color: C.bg, fontWeight: '800', fontSize: 13 },
 });

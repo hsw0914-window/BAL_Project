@@ -93,3 +93,15 @@ export async function getSummaryStats(days = 7) {
   const response = await client.get(`/api/stats/summary?days=${days}`);
   return response.data;
 }
+
+// ── Baby 프로필 ─────────────────────────────────
+
+export async function getBaby() {
+  const response = await client.get('/api/baby');
+  return response.data;  // null | { id, name, gender, birth_date }
+}
+
+export async function updateBaby({ name, gender, birth_date }) {
+  const response = await client.put('/api/baby', { name, gender, birth_date });
+  return response.data;
+}

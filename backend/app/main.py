@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from app.routes.ocr_routes import router as ocr_router
 from app.routes.record_routes import router as record_router
 from app.routes.stats_routes import router as stats_router
+from app.routes.baby_routes import router as baby_router
 from app.database import init_db
 from dotenv import load_dotenv
 
@@ -42,6 +43,7 @@ app.mount("/output", StaticFiles(directory=OUTPUT_DIR), name="output")
 app.include_router(ocr_router)
 app.include_router(record_router)
 app.include_router(stats_router)
+app.include_router(baby_router)
 
 init_db()
 
