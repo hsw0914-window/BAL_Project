@@ -11,8 +11,8 @@ class User(Base):
     __tablename__ = "users"
 
     id            = Column(Integer, primary_key=True, autoincrement=True)
-    username      = Column(String(50), unique=True, nullable=False)   # 로그인용 아이디
-    name          = Column(String(50), nullable=False)                # 실명
+    username      = Column(String(50), unique=True, nullable=False)
+    name          = Column(String(50), nullable=False)
     email         = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     nickname      = Column(String(50), nullable=False)
@@ -47,15 +47,23 @@ class Record(Base):
     original_text = Column(Text)
     masked_text   = Column(Text)
     image_path    = Column(String(500))
-    record_date   = Column(DateTime, nullable=False)
+    started_at    = Column(DateTime, nullable=False)       # 기록 시작 시각 (사용자 지정)
+    ended_at      = Column(DateTime, nullable=True)        # 기록 종료 시각 (선택)
     created_at    = Column(DateTime, nullable=False, server_default=func.now())
     updated_at    = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 
+    @property
+    def duration_minutes(self):
+        """ended_at - started_at 을 분 단위로 반환 (ended_at 없으면 None)"""
+        if self.ended_at and self.started_at:
+            return int((self.ended_at - self.started_at).total_seconds() // 60)
+        return None
+
     user        = relationship("User", back_populates="records")
     baby        = relationship("Baby", back_populates="records")
-    masked_info = relationship("MaskedInfo", back_populates="record", cascade="all, delete-orphan")
+    masked_info = relationship("MaskedInfo",          back_populates="record", cascade="all, delete-orphan")
 
-    # 카테고리별 상세 기록 연결
+    # 카테고리별 상세 기록
     breastfeeding = relationship("BreastfeedingRecord", back_populates="record", cascade="all, delete-orphan")
     formula       = relationship("FormulaRecord",       back_populates="record", cascade="all, delete-orphan")
     baby_food     = relationship("BabyFoodRecord",      back_populates="record", cascade="all, delete-orphan")
@@ -85,13 +93,13 @@ class MaskedInfo(Base):
 class Document(Base):
     __tablename__ = "documents"
 
-    id                = Column(Integer, primary_key=True, autoincrement=True)
-    user_id           = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    document_type     = Column(Enum("prescription", "vaccination", "medical_certificate"), nullable=False)
-    masked_image_url  = Column(String(500))
-    masked_text       = Column(Text)
-    created_at        = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at        = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    id               = Column(Integer, primary_key=True, autoincrement=True)
+    user_id          = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    document_type    = Column(Enum("prescription", "vaccination", "medical_certificate"), nullable=False)
+    masked_image_url = Column(String(500))
+    masked_text      = Column(Text)
+    created_at       = Column(DateTime, nullable=False, server_default=func.now())
+    updated_at       = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 
     user                       = relationship("User", back_populates="documents")
     prescription_detail        = relationship("PrescriptionDetail",       back_populates="document", uselist=False, cascade="all, delete-orphan")
@@ -102,17 +110,17 @@ class Document(Base):
 class PrescriptionDetail(Base):
     __tablename__ = "prescription_details"
 
-    id                    = Column(Integer, primary_key=True, autoincrement=True)
-    document_id           = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, unique=True)
-    hospital_name         = Column(String(100))
-    prescription_date     = Column(Date)
-    dispense_date         = Column(Date)
-    department            = Column(String(50))
-    notes                 = Column(Text)
-    created_at            = Column(DateTime, nullable=False, server_default=func.now())
+    id                = Column(Integer, primary_key=True, autoincrement=True)
+    document_id       = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, unique=True)
+    hospital_name     = Column(String(100))
+    prescription_date = Column(Date)
+    dispense_date     = Column(Date)
+    department        = Column(String(50))
+    notes             = Column(Text)
+    created_at        = Column(DateTime, nullable=False, server_default=func.now())
 
-    document  = relationship("Document",              back_populates="prescription_detail")
-    medicines = relationship("PrescriptionMedicine",  back_populates="prescription_detail", cascade="all, delete-orphan")
+    document  = relationship("Document",             back_populates="prescription_detail")
+    medicines = relationship("PrescriptionMedicine", back_populates="prescription_detail", cascade="all, delete-orphan")
 
 
 class PrescriptionMedicine(Base):
@@ -121,10 +129,10 @@ class PrescriptionMedicine(Base):
     id                     = Column(Integer, primary_key=True, autoincrement=True)
     prescription_detail_id = Column(Integer, ForeignKey("prescription_details.id", ondelete="CASCADE"), nullable=False)
     medicine_name          = Column(String(100), nullable=False)
-    dose                   = Column(String(50))    # 1회 복용량
-    frequency              = Column(String(50))    # 1일 복용 횟수
-    duration               = Column(String(50))    # 총 복용 기간
-    method                 = Column(String(100))   # 복용 방법
+    dose                   = Column(String(50))
+    frequency              = Column(String(50))
+    duration               = Column(String(50))
+    method                 = Column(String(100))
     created_at             = Column(DateTime, nullable=False, server_default=func.now())
 
     prescription_detail = relationship("PrescriptionDetail", back_populates="medicines")
@@ -138,8 +146,8 @@ class VaccinationDetail(Base):
     institution_name = Column(String(100))
     vaccination_date = Column(Date)
     vaccine_name     = Column(String(100))
-    dose_number      = Column(Integer)             # 접종 차수
-    manufacturer     = Column(String(100))         # 제조사 또는 백신 상세
+    dose_number      = Column(Integer)
+    manufacturer     = Column(String(100))
     notes            = Column(Text)
     created_at       = Column(DateTime, nullable=False, server_default=func.now())
 
@@ -154,7 +162,7 @@ class MedicalCertificateDetail(Base):
     hospital_name = Column(String(100))
     visit_date    = Column(Date)
     department    = Column(String(50))
-    purpose       = Column(String(200))   # 제출용도 / 발급 목적
+    purpose       = Column(String(200))
     notes         = Column(Text)
     created_at    = Column(DateTime, nullable=False, server_default=func.now())
 
