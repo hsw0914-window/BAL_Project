@@ -5,10 +5,17 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "sdkVersion": "54.0.0",
-    "platforms": ["android", "ios", "web"],
+    "platforms": [
+      "android",
+      "ios",
+      "web"
+    ],
     "android": {
       "package": "com.babyautolog.app"
     },
-    "newArchEnabled": true
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }

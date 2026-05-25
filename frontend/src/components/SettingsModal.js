@@ -23,6 +23,7 @@ export default function SettingsModal({
   onChangeThreshold,
   onOpenBabyProfile,
   babyName,
+  onLogout,
 }) {
   const { C } = useTheme();
   const styles = useMemo(() => makeStyles(C), [C]);
@@ -88,9 +89,9 @@ export default function SettingsModal({
             >
               <Row
                 styles={styles}
-                icon="happy-outline"
-                title="아기 정보"
-                subtitle={babyName || '미설정 — 탭해서 입력하기'}
+                icon="people-outline"
+                title="아기 관리"
+                subtitle={babyName || '아기를 추가해주세요'}
                 right={
                   <Ionicons name="chevron-forward" size={18} color={C.inkMute} />
                 }
@@ -105,6 +106,25 @@ export default function SettingsModal({
               title="BabyAutoLog"
               subtitle={`버전 ${APP_VERSION}`}
             />
+
+            {/* 로그아웃 */}
+            {onLogout && (
+              <TouchableOpacity
+                onPress={() => { onClose(); onLogout(); }}
+                activeOpacity={0.7}
+                style={{ marginTop: 20 }}
+              >
+                <Row
+                  styles={styles}
+                  icon="log-out-outline"
+                  title="로그아웃"
+                  subtitle="다른 계정으로 전환"
+                  right={
+                    <Ionicons name="chevron-forward" size={18} color={C.inkMute} />
+                  }
+                />
+              </TouchableOpacity>
+            )}
           </ScrollView>
         </View>
       </View>

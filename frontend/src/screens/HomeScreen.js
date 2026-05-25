@@ -12,7 +12,10 @@ import BrandLogo from '../components/BrandLogo';
 
 const SERIF_ITALIC = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
 import { MOCK_RECORDS } from '../mockData';
-import { getRecords, getBaby, updateBaby } from '../services/api';
+import { getRecords } from '../services/api';
+import { useAuth } from '../AuthContext';
+import { useBaby } from '../BabyContext';
+import BabySelectorModal from '../components/BabySelectorModal';
 import {
   scopeFilter, getLastFeeding, formatTimeAgo, formatHHMM,
   formatDuration, formatBabyAge, summarizeStats,
@@ -40,30 +43,33 @@ const DEFAULT_FEEDING_INTERVAL = 180; // 3시간
 export default function HomeScreen({ navigation }) {
   const { C } = useTheme();
   const styles = useMemo(() => makeStyles(C), [C]);
+  const { logout } = useAuth();
+  const { activeBaby, babies, editBaby } = useBaby();
   const [scope, setScope] = useState('today');
   const [records, setRecords] = useState(USE_MOCK ? MOCK_RECORDS : []);
   const [alarmsOn, setAlarmsOn] = useState(true);
   const [alarmThreshold, setAlarmThreshold] = useState(DEFAULT_FEEDING_INTERVAL);
-  const [baby, setBaby] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const [editingBaby, setEditingBaby] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const baby = activeBaby;
 
   useFocusEffect(useCallback(() => {
     if (USE_MOCK) return;
     let alive = true;
-    Promise.all([getRecords(), getBaby()])
-      .then(([recs, b]) => {
-        if (!alive) return;
-        setRecords(recs);
-        setBaby(b);
-      })
+    getRecords(activeBaby?.id)
+      .then((recs) => { if (alive) setRecords(recs); })
       .catch(() => { if (alive) setRecords([]); });
     return () => { alive = false; };
-  }, []));
+  }, [activeBaby?.id]));
 
   async function handleSaveBaby(payload) {
-    const saved = await updateBaby(payload);
-    setBaby(saved);
+    if (editingBaby?.id) {
+      await editBaby(editingBaby.id, payload);
+    }
+    setEditingBaby(null);
   }
 
   // 헤더: 타이틀은 항상 프로젝트명 고정. 아기 이름·나이·성별은 서브 라인에 표시.
@@ -100,7 +106,7 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.headerRow}>
           <TouchableOpacity
             style={styles.profileTap}
-            onPress={() => setProfileOpen(true)}
+            onPress={() => setSelectorOpen(true)}
             activeOpacity={0.7}
           >
             <BrandLogo size={40} />
@@ -265,10 +271,17 @@ export default function HomeScreen({ navigation }) {
 
       <BottomTabBar navigation={navigation} current="Home" />
 
+      <BabySelectorModal
+        visible={selectorOpen}
+        onClose={() => setSelectorOpen(false)}
+        onAddBaby={() => { setEditingBaby(null); setProfileOpen(true); }}
+        onEditBaby={(b) => { setEditingBaby(b); setProfileOpen(true); }}
+      />
+
       <BabyProfileModal
         visible={profileOpen}
-        baby={baby}
-        onClose={() => setProfileOpen(false)}
+        baby={editingBaby}
+        onClose={() => { setProfileOpen(false); setEditingBaby(null); }}
         onSave={handleSaveBaby}
       />
 
@@ -279,8 +292,9 @@ export default function HomeScreen({ navigation }) {
         onToggleAlarms={() => setAlarmsOn((v) => !v)}
         alarmThreshold={alarmThreshold}
         onChangeThreshold={setAlarmThreshold}
-        onOpenBabyProfile={() => setProfileOpen(true)}
+        onOpenBabyProfile={() => setSelectorOpen(true)}
         babyName={baby?.name}
+        onLogout={logout}
       />
     </SafeAreaView>
   );

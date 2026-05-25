@@ -6,11 +6,44 @@ const client = axios.create({
   timeout: 30000,
 });
 
-/**
- * 촬영된 이미지를 백엔드로 업로드 → OCR + 마스킹 결과 반환
- * @param {string} imageUri - expo-camera로 촬영된 로컬 파일 URI
- * @returns {Promise<Object>} ProcessResponse 형태의 JSON
- */
+// ── Auth token injection ────────────────────────────
+let _token = null;
+
+export function setAuthToken(token) {
+  _token = token;
+}
+
+client.interceptors.request.use((config) => {
+  if (_token) {
+    config.headers.Authorization = `Bearer ${_token}`;
+  }
+  return config;
+});
+
+// ── Auth API ────────────────────────────────────────
+
+export async function registerUser({ username, name, email, nickname, password }) {
+  const response = await client.post('/api/auth/register', { username, name, email, nickname, password });
+  return response.data;
+}
+
+export async function loginUser({ username, password }) {
+  const response = await client.post('/api/auth/login', { username, password });
+  return response.data;
+}
+
+export async function refreshToken(rt) {
+  const response = await client.post('/api/auth/refresh', { refresh_token: rt });
+  return response.data;
+}
+
+export async function getMe() {
+  const response = await client.get('/api/auth/me');
+  return response.data;
+}
+
+// ── OCR ─────────────────────────────────────────────
+
 export async function uploadDocument(imageUri) {
   const formData = new FormData();
   formData.append('file', {
@@ -18,90 +51,89 @@ export async function uploadDocument(imageUri) {
     name: 'document.jpg',
     type: 'image/jpeg',
   });
-
   const response = await client.post('/api/ocr/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-
   return response.data;
 }
 
-/**
- * 마스킹된 이미지의 전체 URL 반환
- * @param {string} path - 예: "/output/masked_abc123.png"
- */
 export function getMaskedImageUrl(path) {
   return `${API_BASE_URL}${path}`;
 }
 
-/**
- * 육아 기록 텍스트를 AI로 분류하여 저장
- * @param {string} text - 사용자가 입력한 자유 형식 텍스트
- * @returns {Promise<Array>} 저장된 기록 배열 [{id, category, summary, original_text}]
- */
-export async function createRecord(text) {
-  const response = await client.post('/api/records', { text });
+// ── Records ─────────────────────────────────────────
+
+export async function createRecord(text, babyId) {
+  const body = { text };
+  if (babyId) body.baby_id = babyId;
+  const response = await client.post('/api/records', body);
   return response.data;
 }
 
-/**
- * 전체 기록 조회
- * @returns {Promise<Array>}
- */
-export async function getRecords() {
-  const response = await client.get('/api/records');
+export async function getRecords(babyId) {
+  const params = babyId ? { baby_id: babyId } : {};
+  const response = await client.get('/api/records', { params });
   return response.data;
 }
 
-/**
- * 카테고리별 기록 조회
- * @param {string} category
- * @returns {Promise<Array>}
- */
-export async function getRecordsByCategory(category) {
-  const response = await client.get(`/api/records/${encodeURIComponent(category)}`);
+export async function getRecordsByCategory(category, babyId) {
+  const params = babyId ? { baby_id: babyId } : {};
+  const response = await client.get(`/api/records/${encodeURIComponent(category)}`, { params });
   return response.data;
 }
 
-/**
- * 기록 삭제
- * @param {number} id
- */
 export async function deleteRecord(id) {
   const response = await client.delete(`/api/records/${id}`);
   return response.data;
 }
 
-// ── 통계 API ────────────────────────────────────
+// ── Stats ───────────────────────────────────────────
 
-export async function getFeedingStats(days = 7) {
-  const response = await client.get(`/api/stats/feeding?days=${days}`);
+export async function getFeedingStats(days = 7, babyId) {
+  const params = { days };
+  if (babyId) params.baby_id = babyId;
+  const response = await client.get('/api/stats/feeding', { params });
   return response.data;
 }
 
-export async function getSleepStats(days = 7) {
-  const response = await client.get(`/api/stats/sleep?days=${days}`);
+export async function getSleepStats(days = 7, babyId) {
+  const params = { days };
+  if (babyId) params.baby_id = babyId;
+  const response = await client.get('/api/stats/sleep', { params });
   return response.data;
 }
 
-export async function getGrowthStats() {
-  const response = await client.get('/api/stats/growth');
+export async function getGrowthStats(babyId) {
+  const params = babyId ? { baby_id: babyId } : {};
+  const response = await client.get('/api/stats/growth', { params });
   return response.data;
 }
 
-export async function getSummaryStats(days = 7) {
-  const response = await client.get(`/api/stats/summary?days=${days}`);
+export async function getSummaryStats(days = 7, babyId) {
+  const params = { days };
+  if (babyId) params.baby_id = babyId;
+  const response = await client.get('/api/stats/summary', { params });
   return response.data;
 }
 
-// ── Baby 프로필 ─────────────────────────────────
+// ── Babies (multi-baby) ─────────────────────────────
 
-export async function getBaby() {
-  const response = await client.get('/api/baby');
-  return response.data;  // null | { id, name, gender, birth_date }
+export async function getBabies() {
+  const response = await client.get('/api/babies');
+  return response.data;
 }
 
-export async function updateBaby({ name, gender, birth_date }) {
-  const response = await client.put('/api/baby', { name, gender, birth_date });
+export async function createBaby({ name, gender, birth_date }) {
+  const response = await client.post('/api/babies', { name, gender, birth_date });
+  return response.data;
+}
+
+export async function updateBaby(babyId, { name, gender, birth_date }) {
+  const response = await client.put(`/api/babies/${babyId}`, { name, gender, birth_date });
+  return response.data;
+}
+
+export async function deleteBaby(babyId) {
+  const response = await client.delete(`/api/babies/${babyId}`);
   return response.data;
 }

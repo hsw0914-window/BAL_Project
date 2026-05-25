@@ -16,6 +16,7 @@ import {
   MOCK_FEEDING, MOCK_SLEEP, MOCK_GROWTH,
 } from '../mockData';
 import { useTheme } from '../theme';
+import { useBaby } from '../BabyContext';
 import ScreenHeader from '../components/ScreenHeader';
 import BottomTabBar from '../components/BottomTabBar';
 
@@ -94,6 +95,7 @@ function toDateMap(rows, key) {
 export default function ReportScreen({ navigation }) {
   const { C } = useTheme();
   const styles = useMemo(() => makeStyles(C), [C]);
+  const { activeBaby } = useBaby();
   const [period, setPeriod] = useState(7);
   const [loading, setLoading] = useState(false);
   const [feeding, setFeeding] = useState(null);
@@ -110,11 +112,12 @@ export default function ReportScreen({ navigation }) {
         setGrowth(MOCK_GROWTH);
         setSummary(period === 7 ? MOCK_SUMMARY : MOCK_SUMMARY_30);
       } else {
+        const bid = activeBaby?.id;
         const [f, s, g, sum] = await Promise.all([
-          getFeedingStats(period),
-          getSleepStats(period),
-          getGrowthStats(),
-          getSummaryStats(period),
+          getFeedingStats(period, bid),
+          getSleepStats(period, bid),
+          getGrowthStats(bid),
+          getSummaryStats(period, bid),
         ]);
         setFeeding(f);
         setSleep(s);
@@ -122,7 +125,7 @@ export default function ReportScreen({ navigation }) {
         setSummary(sum);
       }
     } catch (e) { /* keep empty */ } finally { setLoading(false); }
-  }, [period]);
+  }, [period, activeBaby?.id]);
 
   useFocusEffect(useCallback(() => { fetchAll(); }, [fetchAll]));
 

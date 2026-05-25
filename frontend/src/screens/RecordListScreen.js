@@ -8,6 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getRecords, getRecordsByCategory, deleteRecord } from '../services/api';
 import { useTheme, CATEGORY_ICONS } from '../theme';
+import { useBaby } from '../BabyContext';
 import { MOCK_RECORDS } from '../mockData';
 import { parseUTC } from '../dataHelpers';
 import ScreenHeader from '../components/ScreenHeader';
@@ -88,6 +89,7 @@ function dateKey(isoStr) {
 export default function RecordListScreen({ navigation }) {
   const { C, CATEGORY_COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(C), [C]);
+  const { activeBaby } = useBaby();
   const [selectedCategory, setSelectedCategory] = useState('전체');
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -104,8 +106,8 @@ export default function RecordListScreen({ navigation }) {
           : MOCK_RECORDS.filter((r) => r.category === selectedCategory);
       } else {
         data = selectedCategory === '전체'
-          ? await getRecords()
-          : await getRecordsByCategory(selectedCategory);
+          ? await getRecords(activeBaby?.id)
+          : await getRecordsByCategory(selectedCategory, activeBaby?.id);
       }
       setRecords(data);
     } catch (e) {
@@ -113,7 +115,7 @@ export default function RecordListScreen({ navigation }) {
     } finally {
       setLoading(false);
     }
-  }, [selectedCategory]);
+  }, [selectedCategory, activeBaby?.id]);
 
   useFocusEffect(useCallback(() => { fetchRecords(); }, [fetchRecords]));
 

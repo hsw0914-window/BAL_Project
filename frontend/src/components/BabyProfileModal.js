@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme';
+import { useBaby } from '../BabyContext';
 
 const GENDERS = [
   { key: '여아', label: '여아', icon: 'female-outline' },
@@ -20,10 +21,13 @@ function isValidDate(s) {
 export default function BabyProfileModal({ visible, baby, onClose, onSave }) {
   const { C } = useTheme();
   const styles = useMemo(() => makeStyles(C), [C]);
+  const { addBaby, editBaby } = useBaby();
   const [name, setName] = useState('');
   const [gender, setGender] = useState('여아');
   const [birth, setBirth] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const isEdit = !!baby?.id;
 
   useEffect(() => {
     if (!visible) return;
@@ -39,15 +43,17 @@ export default function BabyProfileModal({ visible, baby, onClose, onSave }) {
   async function handleSave() {
     setSaving(true);
     try {
-      await onSave({
-        name: name.trim() || null,
-        gender,
-        birth_date: birth.trim() || null,
-      });
+      const payload = { name: name.trim() || null, gender, birth_date: birth.trim() || null };
+      if (isEdit) {
+        await editBaby(baby.id, payload);
+      } else {
+        await addBaby(payload);
+      }
+      if (onSave) await onSave(payload);
       onClose();
     } catch (e) {
       setSaving(false);
-      alert(e?.message || '저장에 실패했어요.');
+      alert(e?.response?.data?.detail || e?.message || '저장에 실패했어요.');
     }
   }
 
