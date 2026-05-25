@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { createRecord } from '../services/api';
 import { useTheme, CATEGORY_ICONS } from '../theme';
+import { useBaby } from '../BabyContext';
 import ScreenHeader from '../components/ScreenHeader';
 
 const EXAMPLES = [
@@ -57,6 +58,7 @@ function buildChips(category, detail = {}) {
 export default function RecordInputScreen({ navigation }) {
   const { C, CATEGORY_COLORS } = useTheme();
   const styles = useMemo(() => makeStyles(C), [C]);
+  const { activeBaby } = useBaby();
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
@@ -65,7 +67,7 @@ export default function RecordInputScreen({ navigation }) {
     if (!text.trim()) return;
     setLoading(true);
     try {
-      const saved = await createRecord(text.trim());
+      const saved = await createRecord(text.trim(), activeBaby?.id);
       setResults(saved);
     } catch (e) {
       const msg = e.response?.data?.detail || e.message || '오류가 발생했습니다.';
@@ -226,14 +228,14 @@ export default function RecordInputScreen({ navigation }) {
             </ScrollView>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalBtnOutline}
-                onPress={() => { setResults(null); navigation.navigate('RecordList'); }}
-              >
-                <Text style={styles.modalBtnOutlineText}>목록 보기</Text>
+              <TouchableOpacity style={styles.modalBtnOutline} onPress={handleClose}>
+                <Text style={styles.modalBtnOutlineText}>새 기록 입력</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalBtn} onPress={handleClose}>
-                <Text style={styles.modalBtnText}>새 기록 입력</Text>
+              <TouchableOpacity
+                style={styles.modalBtn}
+                onPress={() => { setResults(null); navigation.goBack(); }}
+              >
+                <Text style={styles.modalBtnText}>확인</Text>
               </TouchableOpacity>
             </View>
           </View>

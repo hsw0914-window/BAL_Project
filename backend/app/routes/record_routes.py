@@ -1,16 +1,18 @@
-from fastapi import APIRouter, HTTPException
+from typing import Optional
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from app.services.classify_service import classify_record
 from app.database import get_connection
+from app.security import get_current_user_id
 
 router = APIRouter(prefix="/api/records", tags=["Records"])
 
 
 class RecordRequest(BaseModel):
     text: str
+    baby_id: Optional[int] = None
 
 
-# 카테고리별 자식 테이블 INSERT 쿼리
 def insert_category_detail(conn, category: str, record_id: int, result: dict):
     if category == "모유기록":
         conn.execute(
@@ -64,7 +66,6 @@ def insert_category_detail(conn, category: str, record_id: int, result: dict):
         )
 
 
-# 카테고리별 자식 테이블 조회
 def fetch_category_detail(conn, category: str, record_id: int) -> dict:
     table_map = {
         "모유기록":  "breastfeeding_records",
@@ -93,9 +94,22 @@ def fetch_category_detail(conn, category: str, record_id: int) -> dict:
 
 
 @router.post("")
-async def create_record(req: RecordRequest):
+async def create_record(req: RecordRequest, user_id: int = Depends(get_current_user_id)):
     if not req.text.strip():
         raise HTTPException(status_code=400, detail="텍스트를 입력해주세요.")
+
+    baby_id = req.baby_id
+    if baby_id:
+        conn = get_connection()
+        b = conn.execute("SELECT id FROM babies WHERE id = ? AND user_id = ?", (baby_id, user_id)).fetchone()
+        conn.close()
+        if not b:
+            raise HTTPException(404, "해당 아기 정보를 찾을 수 없습니다.")
+    else:
+        conn = get_connection()
+        b = conn.execute("SELECT id FROM babies WHERE user_id = ? ORDER BY id ASC LIMIT 1", (user_id,)).fetchone()
+        conn.close()
+        baby_id = b["id"] if b else None
 
     results = await classify_record(req.text)
 
@@ -106,8 +120,8 @@ async def create_record(req: RecordRequest):
         summary = result.get("summary", "")
 
         cursor = conn.execute(
-            "INSERT INTO records (category, original_text, summary) VALUES (?, ?, ?)",
-            (category, req.text, summary),
+            "INSERT INTO records (category, original_text, summary, user_id, baby_id) VALUES (?, ?, ?, ?, ?)",
+            (category, req.text, summary, user_id, baby_id),
         )
         record_id = cursor.lastrowid
 
@@ -128,11 +142,21 @@ async def create_record(req: RecordRequest):
 
 
 @router.get("")
-def get_records():
+def get_records(
+    baby_id: Optional[int] = Query(None),
+    user_id: int = Depends(get_current_user_id),
+):
     conn = get_connection()
-    rows = conn.execute(
-        "SELECT * FROM records ORDER BY created_at DESC"
-    ).fetchall()
+    if baby_id:
+        rows = conn.execute(
+            "SELECT * FROM records WHERE user_id = ? AND baby_id = ? ORDER BY created_at DESC",
+            (user_id, baby_id),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM records WHERE user_id = ? ORDER BY created_at DESC",
+            (user_id,),
+        ).fetchall()
     result = []
     for row in rows:
         record = dict(row)
@@ -143,12 +167,22 @@ def get_records():
 
 
 @router.get("/{category}")
-def get_records_by_category(category: str):
+def get_records_by_category(
+    category: str,
+    baby_id: Optional[int] = Query(None),
+    user_id: int = Depends(get_current_user_id),
+):
     conn = get_connection()
-    rows = conn.execute(
-        "SELECT * FROM records WHERE category = ? ORDER BY created_at DESC",
-        (category,),
-    ).fetchall()
+    if baby_id:
+        rows = conn.execute(
+            "SELECT * FROM records WHERE user_id = ? AND baby_id = ? AND category = ? ORDER BY created_at DESC",
+            (user_id, baby_id, category),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM records WHERE user_id = ? AND category = ? ORDER BY created_at DESC",
+            (user_id, category),
+        ).fetchall()
     result = []
     for row in rows:
         record = dict(row)
@@ -159,8 +193,14 @@ def get_records_by_category(category: str):
 
 
 @router.delete("/{record_id}")
-def delete_record(record_id: int):
+def delete_record(record_id: int, user_id: int = Depends(get_current_user_id)):
     conn = get_connection()
+    existing = conn.execute(
+        "SELECT id FROM records WHERE id = ? AND user_id = ?", (record_id, user_id)
+    ).fetchone()
+    if not existing:
+        conn.close()
+        raise HTTPException(404, "기록을 찾을 수 없습니다.")
     conn.execute("DELETE FROM records WHERE id = ?", (record_id,))
     conn.commit()
     conn.close()
