@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "BabyAutoLog",
+    "slug": "baby-auto-log",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "sdkVersion": "54.0.0",
+    "platforms": [
+      "android",
+      "ios",
+      "web"
+    ],
+    "android": {
+      "package": "com.babyautolog.app"
+    },
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-secure-store"
+    ]
+  }
+}

@@ -1,1 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# Environment variables (API keys, secrets)
+.env
+.env.*
+
+# Backend output (generated files)
+backend/output/*.png
+backend/output/*.jpg
+backend/uploads/*
+!backend/output/.gitkeep
+!backend/uploads/.gitkeep
+
+# Node.js
 node_modules/
+npm-debug.log*
+
+# Expo
+frontend/.expo/devices.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+.claude/
