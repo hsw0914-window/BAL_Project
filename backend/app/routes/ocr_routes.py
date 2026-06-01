@@ -10,7 +10,7 @@ from app.services.masking_service import apply_image_mask, detect_sensitive_boxe
 from app.services.medicine_service import extract_medicines, extract_notes
 from app.services.ocr_service import extract_ocr_result
 
-router = APIRouter(prefix="/api/ocr", tags=["OCR"])
+router = APIRouter(prefix="/api/v1/ocr", tags=["OCR"])
 
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "output")
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/jpg", "image/bmp", "image/tiff"}

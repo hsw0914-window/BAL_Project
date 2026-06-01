@@ -8,7 +8,7 @@ from app.security import (
     get_current_user_id,
 )
 
-router = APIRouter(prefix="/api/auth", tags=["Auth"])
+router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 
 
 # ── Schemas ──────────────────────────────────────────

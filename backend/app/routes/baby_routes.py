@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from app.database import get_connection
 from app.security import get_current_user_id
 
-router = APIRouter(prefix="/api/babies", tags=["Baby"])
+router = APIRouter(prefix="/api/v1/babies", tags=["Baby"])
 
 
 class BabyRequest(BaseModel):

@@ -4,7 +4,7 @@ from app.database import get_connection
 from app.security import get_current_user_id
 from datetime import datetime, timedelta
 
-router = APIRouter(prefix="/api/stats", tags=["Stats"])
+router = APIRouter(prefix="/api/v1/stats", tags=["Stats"])
 
 
 def _since_date(days: int) -> str:
