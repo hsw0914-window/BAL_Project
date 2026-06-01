@@ -3,4 +3,4 @@
 // iOS 시뮬레이터:    'http://localhost:8000'
 // 웹 프리뷰:         'http://localhost:8000'
 // Expo Go (폰):      'http://<LAN_IP>:8000'
-export const API_BASE_URL = '';
+export const API_BASE_URL = 'https://babycare-backend-production.up.railway.app';
