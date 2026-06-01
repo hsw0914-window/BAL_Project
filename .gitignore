@@ -1,5 +1,11 @@
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
 # Python
 __pycache__/
+*.pyc
 *.py[cod]
 *.pyo
 venv/

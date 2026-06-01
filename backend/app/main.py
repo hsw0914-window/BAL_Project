@@ -47,9 +47,26 @@ app.include_router(stats_router)
 app.include_router(baby_router)
 app.include_router(auth_router)
 
-init_db()
+@app.on_event("startup")
+async def startup():
+    import os
+    print("[DEBUG] === DB 관련 환경변수 목록 ===")
+    for key, val in os.environ.items():
+        if any(x in key.upper() for x in ['DATABASE', 'POSTGRES', 'PG', 'DB']):
+            print(f"[DEBUG] {key} = {val[:40]}...")
+    print("[DEBUG] ==============================")
+    try:
+        init_db()
+        print("[DEBUG] DB 초기화 성공")
+    except Exception as e:
+        print(f"[DEBUG] DB 초기화 실패: {e}")
 
 
 @app.get("/")
 def root():
     return {"message": "BabyAutoLog-AI 서버 실행 중", "docs": "/docs"}
+
+
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
