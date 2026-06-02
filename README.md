@@ -31,10 +31,12 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 # 환경변수 — backend/.env 파일 만들고 키 채우기
+cat > .env <<'EOF'
 ANTHROPIC_API_KEY=sk-ant-...여기에 본인 키...
 UPSTAGE_API_KEY=up_...여기에 본인 키...
 UPLOAD_DIR=uploads
 OUTPUT_DIR=output
+EOF
 
 # 서버 시작
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -108,98 +110,27 @@ npx expo start --host lan --port 8081
 
 ---
 
-## 5. 프로젝트 구조
+## 5. 프로젝트 구조 (요약)
 
 ```
-BAL_Project/
-├── main.py
-├── app/
-│   ├── core/         # 설정, DB, 보안
-│   ├── models/       # DB 테이블 정의
-│   │   ├── __init__.py
-│   │   ├── models.py           # 기본 테이블 (User, Baby, Record 등)
-│   │   └── category_models.py  # 카테고리별 상세 기록 테이블
-│   ├── routers/      # API 엔드포인트
-│   ├── schemas/      # 요청/응답 형식
-│   └── services/     # AI 분류/마스킹 로직
-│       ├── anthropic_service.py
-│       └── upstage_service.py
-└── frontend/
-    └── src/
-        ├── screens/
-        ├── components/
-        ├── services/api.js
-        ├── theme.js
-        └── config.js
+backend/
+  app/
+    main.py              # FastAPI 진입점
+    database.py          # SQLite 스키마 (records, babies)
+    routes/
+      record_routes.py   # /api/records/*
+      baby_routes.py     # /api/baby
+      ocr_routes.py      # /api/ocr/*
+    services/
+      anthropic_service.py  # Claude 분류/요약
+      upstage_service.py    # OCR
+  .env                   # 키 (gitignored)
+
+frontend/
+  src/
+    screens/             # Home / RecordList / Report / RecordInput / Result
+    components/          # BrandLogo, ScreenHeader, BottomTabBar, modals…
+    services/api.js      # 백엔드 호출
+    theme.js             # 라이트/다크 팔레트
+    config.js            # API_BASE_URL
 ```
-
----
-
-## 6. 주요 API
-
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| POST | /api/v1/auth/register | 회원가입 |
-| POST | /api/v1/auth/login | 로그인 |
-| POST | /api/v1/babies | 아이 등록 |
-| POST | /api/v1/records | 육아 기록 저장 |
-| GET | /api/v1/records | 기록 목록 조회 |
-| GET | /api/v1/reports/{baby_id} | 기간별 리포트 |
-| POST | /api/v1/documents | OCR 문서 저장 |
-| GET | /api/v1/documents | OCR 문서 목록 조회 |
-| GET | /api/v1/documents/{id} | OCR 문서 상세 조회 |
-| PATCH | /api/v1/documents/{id} | OCR 문서 수정 |
-| DELETE | /api/v1/documents/{id} | OCR 문서 삭제 |
-
----
-
-## 7. DB 테이블 구조
-
-### 기본 테이블
-| 테이블 | 설명 |
-|--------|------|
-| users | 사용자 계정 |
-| babies | 아이 정보 |
-| records | 육아 기록 |
-| masked_info | 마스킹된 개인정보 |
-
-### OCR 테이블
-| 테이블 | 설명 |
-|--------|------|
-| documents | OCR 문서 공통 정보 |
-| prescription_details | 처방전 상세 |
-| prescription_medicines | 처방약 목록 |
-| vaccination_details | 예방접종 상세 |
-| medical_certificate_details | 진료확인서 상세 |
-
-### 카테고리별 상세 기록 테이블
-| 테이블 | 설명 |
-|--------|------|
-| breastfeeding_records | 모유 수유 기록 |
-| formula_records | 분유 수유 기록 |
-| baby_food_records | 이유식 기록 |
-| diaper_records | 기저귀 기록 |
-| sleep_records | 수면 기록 |
-| growth_records | 성장 기록 |
-| development_records | 발달 기록 |
-| health_records | 건강 기록 |
-| hospital_records | 병원 방문 기록 |
-| daily_records | 일상 기록 |
-
----
-
-## 8. 주의사항 및 보안
-
-- CORS `allow_origins=["*"]` 는 개발용, 배포 시 도메인 명시 필요
-- SECRET_KEY 배포 전 반드시 변경 (.env 에서 관리)
-- 이미지 업로드 시 실제 파일 헤더로 타입 검증 필요 (python-magic)
-- `/uploads` 경로 인증 없이 접근 가능 → 배포 시 별도 엔드포인트로 보호
-
-## 9. 배포 시 체크리스트
-
-- [ ] MySQL로 교체 (현재 SQLite는 개발용)
-- [ ] SECRET_KEY 환경변수로 변경
-- [ ] CORS 도메인 명시
-- [ ] 이미지 업로드 검증 강화
-- [ ] Alembic 마이그레이션 적용
-- [ ] HTTPS 적용

@@ -2,6 +2,8 @@
   "expo": {
     "name": "BabyAutoLog",
     "slug": "baby-auto-log",
+    "owner": "rendezvousgo",
+    "scheme": "babyautolog",
     "version": "1.0.0",
     "orientation": "portrait",
     "sdkVersion": "54.0.0",
@@ -15,7 +17,14 @@
     },
     "newArchEnabled": true,
     "plugins": [
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      "expo-web-browser",
+      "@react-native-google-signin/google-signin"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2528146b-474e-4392-b37c-fd5025ca8305"
+      }
+    }
   }
 }

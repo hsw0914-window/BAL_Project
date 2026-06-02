@@ -47,9 +47,9 @@ app.include_router(stats_router)
 app.include_router(baby_router)
 app.include_router(auth_router)
 
+
 @app.on_event("startup")
 async def startup():
-    import os
     print("[DEBUG] === DB 관련 환경변수 목록 ===")
     for key, val in os.environ.items():
         if any(x in key.upper() for x in ['DATABASE', 'POSTGRES', 'PG', 'DB']):

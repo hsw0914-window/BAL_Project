@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo } 
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { loginUser, registerUser, refreshToken as refreshTokenApi, getMe, setAuthToken } from './services/api';
+import { loginUser, registerUser, refreshToken as refreshTokenApi, getMe, setAuthToken, loginWithGoogle as loginWithGoogleApi } from './services/api';
 
 const TOKEN_KEY = 'bal_access_token';
 const REFRESH_KEY = 'bal_refresh_token';
@@ -70,6 +70,23 @@ export function AuthProvider({ children }) {
     return res.user;
   }, []);
 
+  const loginWithGoogle = useCallback(async (idToken) => {
+    const res = await loginWithGoogleApi(idToken);
+    await saveToken(TOKEN_KEY, res.access_token);
+    await saveToken(REFRESH_KEY, res.refresh_token);
+    setAuthToken(res.access_token);
+    setUser(res.user);
+    return res.user;
+  }, []);
+
+  const adoptSession = useCallback(async (session) => {
+    await saveToken(TOKEN_KEY, session.access_token);
+    await saveToken(REFRESH_KEY, session.refresh_token);
+    setAuthToken(session.access_token);
+    setUser(session.user);
+    return session.user;
+  }, []);
+
   const register = useCallback(async (data) => {
     const res = await registerUser(data);
     await saveToken(TOKEN_KEY, res.access_token);
@@ -91,9 +108,11 @@ export function AuthProvider({ children }) {
     isAuthenticated: !!user,
     loading,
     login,
+    loginWithGoogle,
+    adoptSession,
     register,
     logout,
-  }), [user, loading, login, register, logout]);
+  }), [user, loading, login, loginWithGoogle, adoptSession, register, logout]);
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }

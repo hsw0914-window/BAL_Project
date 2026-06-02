@@ -5,7 +5,7 @@ from app.services.classify_service import classify_record
 from app.database import get_connection
 from app.security import get_current_user_id
 
-router = APIRouter(prefix="/api/v1/records", tags=["Records"])
+router = APIRouter(prefix="/api/records", tags=["Records"])
 
 
 class RecordRequest(BaseModel):
