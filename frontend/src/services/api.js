@@ -42,6 +42,21 @@ export async function getMe() {
   return response.data;
 }
 
+export async function loginWithGoogle(idToken) {
+  const response = await client.post('/api/auth/google', { id_token: idToken });
+  return response.data;
+}
+
+export async function googleDeviceInit() {
+  const response = await client.post('/api/auth/google/device-init');
+  return response.data;
+}
+
+export async function googleDevicePoll(deviceCode) {
+  const response = await client.post('/api/auth/google/device-poll', { device_code: deviceCode });
+  return response.data;
+}
+
 // ── OCR ─────────────────────────────────────────────
 
 export async function uploadDocument(imageUri) {
