@@ -21,6 +21,11 @@ backend/uploads/*
 node_modules/
 npm-debug.log*
 
+# SQLite DB (실제 사용자 데이터 포함)
+*.db
+*.sqlite
+*.sqlite3
+
 # Expo
 .expo/
 frontend/.expo/devices.json
