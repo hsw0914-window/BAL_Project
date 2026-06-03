@@ -2,10 +2,16 @@
   "expo": {
     "name": "BabyAutoLog",
     "slug": "baby-auto-log",
-    "owner": "rendezvousgo",
+    "owner": "bambu22",
     "scheme": "babyautolog",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1B2D4F"
+    },
     "sdkVersion": "54.0.0",
     "platforms": [
       "android",
@@ -13,7 +19,11 @@
       "web"
     ],
     "android": {
-      "package": "com.babyautolog.app"
+      "package": "com.babyautolog.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#1B2D4F"
+      }
     },
     "newArchEnabled": true,
     "plugins": [
@@ -23,7 +33,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "2528146b-474e-4392-b37c-fd5025ca8305"
+        "projectId": "0df2d398-eb87-4a83-9fb6-d25795b257f9"
       }
     }
   }

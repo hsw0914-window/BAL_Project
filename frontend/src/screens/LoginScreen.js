@@ -12,7 +12,7 @@ import { loginWithGoogle as loginWithGoogleApi } from '../services/api';
 import BrandLogo from '../components/BrandLogo';
 
 const SERIF = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
-const GOOGLE_WEB_CLIENT_ID = '';
+const GOOGLE_WEB_CLIENT_ID = '594020864062-glaq48qst73rj5mtkf2f1ggacvl2h1vf.apps.googleusercontent.com';
 
 GoogleSignin.configure({
   webClientId: GOOGLE_WEB_CLIENT_ID,
